@@ -29,6 +29,7 @@
 #include        "template.h"
 
 #include        "mem.h" // for tk/mem_malloc
+#include        "rmem.h"
 
 #include        "cc.h"
 #include        "el.h"
@@ -631,6 +632,7 @@ StructDeclaration *needsPostblit(Type *t)
  *      tb      type of evalue
  */
 
+//vgc: Can allocate iff element postblits allocate
 elem *setArray(elem *eptr, elem *edim, Type *tb, elem *evalue, IRState *irs, int op)
 {   int r;
     elem *e;
@@ -1708,6 +1710,13 @@ elem *NewExp::toElem(IRState *irs)
         }
         else
         {
+            if (global.params.vgc)
+            {
+                char *p = loc.toChars();
+                fprintf(stdmsg, "%s vgc[NEW]: (%s) causes gc allocation\n", p ? p : "", toChars());
+                if (p)
+                    mem.free(p);
+            }
             csym = cd->toSymbol();
             ex = el_bin(OPcall,TYnptr,el_var(rtlsym[RTLSYM_NEWCLASS]),el_ptr(csym));
             ectype = NULL;
@@ -1827,6 +1836,14 @@ elem *NewExp::toElem(IRState *irs)
             // call _d_newitemT(ti)
             e = type->getTypeInfo(NULL)->toElem(irs);
 
+            if (global.params.vgc)
+            {
+                char *p = loc.toChars();
+                fprintf(stdmsg, "%s vgc[NEW]: (%s) causes gc allocation\n", p ? p : "", toChars());
+                if (p)
+                    mem.free(p);
+            }
+
             int rtl = t->isZeroInit() ? RTLSYM_NEWITEMT : RTLSYM_NEWITEMIT;
             ex = el_bin(OPcall,TYnptr,el_var(rtlsym[rtl]),e);
 
@@ -1868,6 +1885,14 @@ elem *NewExp::toElem(IRState *irs)
     {
         TypeDArray *tda = (TypeDArray *)(t);
 
+        if (global.params.vgc)
+        {
+            char *p = loc.toChars();
+            fprintf(stdmsg, "%s vgc[NEW]: (%s) causes gc allocation\n", p ? p : "", toChars());
+            if (p)
+                mem.free(p);
+        }
+
         assert(arguments && arguments->dim >= 1);
         if (arguments->dim == 1)
         {   // Single dimension array allocations
@@ -1901,6 +1926,14 @@ elem *NewExp::toElem(IRState *irs)
     }
     else if (t->ty == Tpointer)
     {
+        if (global.params.vgc)
+        {
+            char *p = loc.toChars();
+            fprintf(stdmsg, "%s vgc[NEW]: (%s) causes gc allocation\n", p ? p : "", toChars());
+            if (p)
+                mem.free(p);
+        }
+
         TypePointer *tp = (TypePointer *)t;
         d_uns64 elemsize = tp->next->size();
         Expression *di = tp->next->defaultInit();
@@ -2111,6 +2144,14 @@ elem *AssertExp::toElem(IRState *irs)
             elem *efilename = (config.exe == EX_WIN64) ? el_ptr(assertexp_sfilename)
                                                        : el_var(assertexp_sfilename);
 
+            if (global.params.vgc)
+            {
+                char *p = loc.toChars();
+                fprintf(stdmsg, "%s vgc[ASSERT_USER]: (%s) may cause gc allocation\n", p ? p : "", toChars());
+                if (p)
+                    mem.free(p);
+            }
+
             if (msg)
             {   elem *emsg = eval_Darray(irs, msg, false);
                 ea = el_var(rtlsym[ud ? RTLSYM_DUNITTEST_MSG : RTLSYM_DASSERT_MSG]);
@@ -2124,6 +2165,14 @@ elem *AssertExp::toElem(IRState *irs)
         }
         else
         {
+            if (global.params.vgc)
+            {
+                char *p = loc.toChars();
+                fprintf(stdmsg, "%s vgc[ASSERT_USER]: (%s) may cause gc allocation\n", p ? p : "", toChars());
+                if (p)
+                    mem.free(p);
+            }
+
             Symbol *sassert = ud ? m->toModuleUnittest() : m->toModuleAssert();
             ea = el_bin(OPcall,TYvoid,el_var(sassert),
                 el_long(TYint, loc.linnum));
@@ -2237,6 +2286,14 @@ elem *CatExp::toElem(IRState *irs)
 
     Type *ta = (tb1->ty == Tarray || tb1->ty == Tsarray) ? tb1 : tb2;
     Type *tn = ta->nextOf();
+
+    if (global.params.vgc)
+    {
+        char *p = loc.toChars();
+        fprintf(stdmsg, "%s vgc[CONCAT]: (%s) causes gc allocation\n", p ? p : "", toChars());
+        if (p)
+            mem.free(p);
+    }
 
     if (e1->op == TOKcat)
     {
@@ -2391,6 +2448,7 @@ elem *CmpExp::toElem(IRState *irs)
 
         ec1 = e1->toElem(irs);
         ec2 = e2->toElem(irs);
+        //Allocates iff opCMP is not overwritten(throws Exception)
         e = el_bin(OPcall,TYint,el_var(rtlsym[RTLSYM_OBJ_CMP]),el_param(ec1, ec2));
         e = el_bin(eop, TYint, e, el_long(TYint, 0));
 #endif
@@ -2407,6 +2465,7 @@ elem *CmpExp::toElem(IRState *irs)
         elem *ea2 = eval_Darray(irs, e2);
 
 #if DMDV2
+        //Only allocates by throwing(assert) or user defined opCMP
         ep = el_params(telement->arrayOf()->getInternalTypeInfo(NULL)->toElem(irs),
                 ea2, ea1, NULL);
         rtlfunc = RTLSYM_ARRAYCMP2;
@@ -2471,6 +2530,7 @@ elem *EqualExp::toElem(IRState *irs)
     {
         elem *ec1 = e1->toElem(irs);
         elem *ec2 = e2->toElem(irs);
+        //User defined opCMP / Exception
         e = el_bin(OPcall,TYint,el_var(rtlsym[RTLSYM_OBJ_EQ]),el_param(ec1, ec2));
     }
 #endif
@@ -2549,6 +2609,7 @@ elem *EqualExp::toElem(IRState *irs)
         elem *ea2 = eval_Darray(irs, e2);
 
 #if DMDV2
+        //depends on opEquals
         elem *ep = el_params(telement->arrayOf()->getInternalTypeInfo(NULL)->toElem(irs),
                 ea2, ea1, NULL);
         int rtlfunc = RTLSYM_ARRAYEQ2;
@@ -2695,6 +2756,13 @@ elem *AssignExp::toElem(IRState *irs)
     {
         // Generate:
         //      _d_arraysetlength(e2, sizeelem, &ale->e1);
+        if (global.params.vgc)
+        {
+            char *p = loc.toChars();
+            fprintf(stdmsg, "%s vgc[ARRAY]: (%s) causes gc allocation\n", p ? p : "", toChars());
+            if (p)
+                mem.free(p);
+        }
 
         ArrayLengthExp *ale = (ArrayLengthExp *)e1;
 
@@ -3031,6 +3099,7 @@ elem *AssignExp::toElem(IRState *irs)
 #if DMDV2
             else if (postblit && op != TOKblit)
             {
+                //Allocates only in error case
                 /* Generate:
                  *      _d_arrayassign(ti, efrom, eto)
                  * or:
@@ -3232,6 +3301,14 @@ elem *CatAssignExp::toElem(IRState *irs)
     elem *e;
     Type *tb1 = e1->type->toBasetype();
     Type *tb2 = e2->type->toBasetype();
+
+    if (global.params.vgc)
+    {
+        char *p = loc.toChars();
+        fprintf(stdmsg, "%s vgc[APPEND]: (%s) causes gc allocation\n", p ? p : "", toChars());
+        if (p)
+            mem.free(p);
+    }
 
     if (tb1->ty == Tarray && tb2->ty == Tdchar &&
         (tb1->nextOf()->ty == Tchar || tb1->nextOf()->ty == Twchar))
@@ -3899,6 +3976,7 @@ elem *BoolExp::toElem(IRState *irs)
     return el_una(OPbool,type->totym(),e1);
 }
 
+//???
 elem *DeleteExp::toElem(IRState *irs)
 {   elem *e;
     int rtl;
@@ -4128,6 +4206,7 @@ elem *CastExp::toElem(IRState *irs)
             if (config.exe == EX_WIN64)
                 e = addressElem(e, t, true);
             elem *ep = el_params(e, el_long(TYsize_t, fsize), el_long(TYsize_t, tsize), NULL);
+            //Only on error
             e = el_bin(OPcall, type->totym(), el_var(rtlsym[RTLSYM_ARRAYCAST]), ep);
         }
         goto Lret;
@@ -4995,6 +5074,15 @@ elem *ArrayLiteralExp::toElem(IRState *irs)
          * Avoids the whole variadic arg mess.
          */
         dim = elements->dim;
+
+        if (global.params.vgc && dim != 0)
+        {
+            char *p = loc.toChars();
+            fprintf(stdmsg, "%s vgc[ARRAY]: (%s) causes gc allocation\n", p ? p : "", toChars());
+            if (p)
+                mem.free(p);
+        }
+
         Elems args;
         args.setDim(dim);           // +1 for number of args parameter
         e = el_long(TYsize_t, dim);
@@ -5134,6 +5222,14 @@ elem *AssocArrayLiteralExp::toElem(IRState *irs)
             // Turn it back into a TypeAArray
             ta = new TypeAArray((*values)[0]->type, (*keys)[0]->type);
             ta = ta->semantic(loc, NULL);
+        }
+
+        if (global.params.vgc)
+        {
+            char *p = loc.toChars();
+            fprintf(stdmsg, "%s vgc[AALITERAL]: (%s) causes gc allocation\n", p ? p : "", toChars());
+            if (p)
+                mem.free(p);
         }
 
         symbol *skeys = NULL;

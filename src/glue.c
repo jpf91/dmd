@@ -366,6 +366,11 @@ void Module::genobjfile(int multiobj)
         free(covb);
         covb = NULL;
 
+        if (global.params.vgc)
+        {
+            fprintf(stdmsg, "vgc[COV]: Code coverage causes gc allocation\n");
+        }
+
         /* Generate:
          *  _d_cover_register(uint[] __coverage, BitArray __bcoverage, string filename);
          * and prepend it to the static constructor.

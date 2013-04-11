@@ -733,6 +733,13 @@ void SwitchErrorStatement::toIR(IRState *irs)
 
     elem *efilename = el_ptr(blx->module->toSymbol());
     elem *elinnum = el_long(TYint, loc.linnum);
+    if (global.params.vgc)
+    {
+        char *p = loc.toChars();
+        fprintf(stdmsg, "%s vgc[SWITCH_USER]: calling switch error handler may cause gc allocation\n", p ? p : "");
+        if (p)
+            mem.free(p);
+    }
     elem *e = el_bin(OPcall, TYvoid, el_var(rtlsym[RTLSYM_DSWITCHERR]), el_param(elinnum, efilename));
     block_appendexp(blx->curblock, e);
 }

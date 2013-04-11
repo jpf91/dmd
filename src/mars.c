@@ -375,6 +375,7 @@ Usage:\n\
   -version=level compile in version code >= level\n\
   -version=ident compile in version code identified by ident\n\
   -vtls          list all variables going into thread local storage\n\
+  -vgc           list all garbage collector allocations\n\
   -w             warnings as errors (compilation will halt)\n\
   -wi            warnings as messages (compilation will continue)\n\
   -X             generate JSON file\n\
@@ -608,6 +609,8 @@ int tryMain(size_t argc, char *argv[])
 #if DMDV2
             else if (strcmp(p + 1, "vtls") == 0)
                 global.params.vtls = 1;
+            else if (strcmp(p + 1, "vgc") == 0)
+                global.params.vgc = 1;
 #endif
             else if (strcmp(p + 1, "v1") == 0)
             {

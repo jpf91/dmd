@@ -3436,6 +3436,14 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
     }
     else if (ident == Id::sort && (n->ty == Tchar || n->ty == Twchar))
     {
+        if (global.params.vgc)
+        {
+            char *p = e->loc.toChars();
+            fprintf(stdmsg, "%s vgc[ARRAY]: (%s.sort) causes gc allocation\n", p ? p : "", e->toChars());
+            if (p)
+                mem.free(p);
+        }
+
         Expression *ec;
         FuncDeclaration *fd;
         Expressions *arguments;
@@ -3458,6 +3466,17 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         Expressions *arguments;
         int size = next->size(e->loc);
         int dup;
+
+        if (global.params.vgc)
+        {
+            char *p = e->loc.toChars();
+            if(ident == Id::dup)
+                fprintf(stdmsg, "%s vgc[ARRAY]: (%s.dup) causes gc allocation\n", p ? p : "", e->toChars());
+            else if(ident == Id::idup)
+                fprintf(stdmsg, "%s vgc[ARRAY]: (%s.idup) causes gc allocation\n", p ? p : "", e->toChars());
+            if (p)
+                mem.free(p);
+        }
 
         Expression *olde = e;
         assert(size);

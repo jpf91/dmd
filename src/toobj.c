@@ -797,6 +797,14 @@ void ClassDeclaration::toObjFile(int multiobj)
                  * If fd overlaps with any function in the vtbl[], then
                  * issue 'hidden' error.
                  */
+                if (global.params.vgc)
+                {
+                    char *p = loc.toChars();
+                    fprintf(stdmsg, "%s vgc[HIDDEN_USER]: hidden func error may cause gc allocation\n", p ? p : "");
+                    if (p)
+                        mem.free(p);
+                }
+
                 for (size_t j = 1; j < vtbl.dim; j++)
                 {   if (j == i)
                         continue;

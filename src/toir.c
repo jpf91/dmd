@@ -31,6 +31,7 @@
 #include        "target.h"
 
 #include        "mem.h" // for mem_malloc
+#include        "rmem.h"
 
 #include        "cc.h"
 #include        "el.h"
@@ -765,6 +766,14 @@ void FuncDeclaration::buildClosure(IRState *irs)
         elem *e;
         e = el_long(TYsize_t, offset);
         e = el_bin(OPcall, TYnptr, el_var(rtlsym[RTLSYM_ALLOCMEMORY]), e);
+
+        if (global.params.vgc)
+        {
+            char *p = loc.toChars();
+            fprintf(stdmsg, "%s vgc[CLOSURE]: Using closure causes gc allocation\n", p ? p : "");
+            if (p)
+                mem.free(p);
+        }
 
         // Assign block of memory to sclosure
         //    sclosure = allocmemory(sz);
