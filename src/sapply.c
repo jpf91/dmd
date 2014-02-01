@@ -154,3 +154,178 @@ bool walkPostorder(Statement *s, StoppableVisitor *v)
     s->accept(&pv);
     return v->stop;
 }
+
+/**************************************
+ * A Statement tree walker that will visit each Statement s in the tree,
+ * in depth-first evaluation order, and call s->accept(v) on it.
+ * v->visit() signals whether walking the current branch continues by setting stop:
+ * Returns:
+ *      false      do not look into further child statements
+ *      true       do look into child statements
+ */
+
+class PreorderStatementVisitor : public Visitor
+{
+public:
+    StoppableVisitor *v;
+    PreorderStatementVisitor(StoppableVisitor *v) : v(v) {}
+
+    void doCond(Statement *s)
+    {
+        if (s)
+            s->accept(this);
+    }
+    bool applyTo(Statement *s)
+    {
+        s->accept(v);
+        bool stop = v->stop;
+        v->stop = false;
+        return !stop;
+    }
+
+    void visit(Statement *s)
+    {
+        if (!applyTo(s))
+            return;
+    }
+    void visit(PeelStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->s);
+    }
+    void visit(CompoundStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        for (size_t i = 0; i < s->statements->dim; i++)
+            doCond((*s->statements)[i]);
+    }
+    void visit(UnrolledLoopStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        for (size_t i = 0; i < s->statements->dim; i++)
+            doCond((*s->statements)[i]);
+    }
+    void visit(ScopeStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->statement);
+    }
+    void visit(WhileStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+    }
+    void visit(DoStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+    }
+    void visit(ForStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->init);
+        doCond(s->body);
+    }
+    void visit(ForeachStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+    }
+    void visit(ForeachRangeStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+    }
+    void visit(IfStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->ifbody);
+        doCond(s->elsebody);
+    }
+    void visit(PragmaStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+    }
+    void visit(SwitchStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+    }
+    void visit(CaseStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->statement);
+    }
+    void visit(DefaultStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->statement);
+    }
+    void visit(SynchronizedStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+    }
+    void visit(WithStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+    }
+    void visit(TryCatchStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+
+        for (size_t i = 0; i < s->catches->dim; i++)
+            doCond((*s->catches)[i]->handler);
+    }
+    void visit(TryFinallyStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->body);
+        doCond(s->finalbody);
+    }
+    void visit(OnScopeStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->statement);
+    }
+    void visit(DebugStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->statement);
+    }
+    void visit(LabelStatement *s)
+    {
+        if (!applyTo(s))
+            return;
+        doCond(s->statement);
+    }
+};
+
+void walkPreorder(Statement *s, StoppableVisitor *v)
+{
+    PreorderStatementVisitor pv(v);
+    s->accept(&pv);
+}
