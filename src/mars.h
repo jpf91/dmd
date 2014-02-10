@@ -95,6 +95,9 @@ struct Param
     char quiet;         // suppress non-error messages
     char verbose;       // verbose compile
     char vtls;          // identify thread local variables
+    char nogc;          // forbid gc usage
+    char vgc;           // identify gc usage
+    char nogcUnittest;  // Apply -nogc/-vgc to unittests as well
     char vfield;        // identify non-mutable field variables
     char symdebug;      // insert debug symbolic information
     bool alwaysframe;   // always emit standard stack frame

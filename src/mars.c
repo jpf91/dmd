@@ -452,6 +452,8 @@ Usage:\n\
   -version=level compile in version code >= level\n\
   -version=ident compile in version code identified by ident\n\
   -vtls          list all variables going into thread local storage\n\
+  -vgc           list all hidden gc allocations\n\
+  -nogc          error on hidden gc allocations\n\
   -w             warnings as errors (compilation will halt)\n\
   -wi            warnings as messages (compilation will continue)\n\
   -X             generate JSON file\n\
@@ -630,6 +632,7 @@ int tryMain(size_t argc, const char *argv[])
     is64bit = parse_arch(argc, argv, is64bit);
     is64bit = parse_arch(dflags_argc, dflags_argv, is64bit);
     global.params.is64bit = is64bit;
+    global.params.nogcUnittest = 0;
 
     const char *envsec = is64bit ? "Environment64" : "Environment32";
     inifile(argv[0], inifilename, envsec);
@@ -726,6 +729,10 @@ int tryMain(size_t argc, const char *argv[])
                 global.params.verbose = 1;
             else if (strcmp(p + 1, "vtls") == 0)
                 global.params.vtls = 1;
+            else if (strcmp(p + 1, "vgc") == 0)
+                global.params.vgc = 1;
+            else if (strcmp(p + 1, "nogc") == 0)
+                global.params.nogc = 1;
             else if (memcmp(p + 1, "transition", 10) == 0)
             {
                 // Parse:

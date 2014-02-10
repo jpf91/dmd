@@ -615,6 +615,13 @@ enum TRUST
     TRUSTsafe = 3,      // @safe
 };
 
+enum GCUSE
+{
+    GCUSEdefault = 0,
+    GCUSE_gc     = 1,    // @gc (same as GCUSEdefault)
+    GCUSE_nogc   = 2,    // @nogc
+};
+
 enum PURE
 {
     PUREimpure = 0,     // not pure at all
@@ -637,6 +644,7 @@ public:
     bool isref;         // true: returns a reference
     LINK linkage;  // calling convention
     TRUST trust;   // level of trust
+    GCUSE gcuse;   // is gc used?
     PURE purity;   // PURExxxx
     unsigned char iswild;   // bit0: inout on params, bit1: inout on qualifier
     Expressions *fargs; // function arguments
