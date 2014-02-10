@@ -129,6 +129,7 @@ public:
     Type *type;                 // !=NULL means that semantic() has been run
     unsigned char size;         // # of bytes in Expression so we can copy() it
     unsigned char parens;       // if this is a parenthesized expression
+    bool visiting;
 
     Expression(Loc loc, TOK op, int size);
     static void init();

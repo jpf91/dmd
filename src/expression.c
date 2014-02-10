@@ -1893,6 +1893,7 @@ Expression::Expression(Loc loc, TOK op, int size)
     this->size = (unsigned char)size;
     this->parens = 0;
     type = NULL;
+    visiting = false;
 }
 
 Expression *EXP_CANT_INTERPRET;
