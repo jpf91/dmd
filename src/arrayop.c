@@ -265,7 +265,7 @@ void buildArrayIdent(Expression *e, OutBuffer *buf, Expressions *arguments)
         void visit(Expression *e)
         {
             buf->writestring("Exp");
-            arguments->shift(e);
+            arguments->push(e);
         }
 
         void visit(CastExp *e)
@@ -282,30 +282,30 @@ void buildArrayIdent(Expression *e, OutBuffer *buf, Expressions *arguments)
         void visit(ArrayLiteralExp *e)
         {
             buf->writestring("Slice");
-            arguments->shift(e);
+            arguments->push(e);
         }
 
         void visit(SliceExp *e)
         {
             buf->writestring("Slice");
-            arguments->shift(e);
+            arguments->push(e);
         }
 
         void visit(AssignExp *e)
         {
-            /* Evaluate assign expressions right to left
+            /* Evaluate assign expressions left to right
              */
-            e->e2->accept(this);
             e->e1->accept(this);
+            e->e2->accept(this);
             buf->writestring("Assign");
         }
 
         void visit(BinAssignExp *e)
         {
-            /* Evaluate assign expressions right to left
+            /* Evaluate assign expressions left to right
              */
-            e->e2->accept(this);
             e->e1->accept(this);
+            e->e2->accept(this);
             const char *s;
             switch(e->op)
             {
@@ -337,7 +337,7 @@ void buildArrayIdent(Expression *e, OutBuffer *buf, Expressions *arguments)
 
         void visit(BinExp *e)
         {
-            /* Evaluate assign expressions left to right
+            /* Evaluate array op expressions left to right
              */
             const char *s = NULL;
             switch(e->op)
@@ -390,7 +390,7 @@ Expression *buildArrayLoop(Expression *e, Parameters *fparams)
         {
             Identifier *id = Identifier::generateId("c", fparams->dim);
             Parameter *param = new Parameter(0, e->type, id, NULL);
-            fparams->shift(param);
+            fparams->push(param);
             result = new IdentifierExp(Loc(), id);
         }
 
@@ -409,7 +409,7 @@ Expression *buildArrayLoop(Expression *e, Parameters *fparams)
         {
             Identifier *id = Identifier::generateId("p", fparams->dim);
             Parameter *param = new Parameter(STCconst, e->type, id, NULL);
-            fparams->shift(param);
+            fparams->push(param);
             Expression *ie = new IdentifierExp(Loc(), id);
             Expressions *arguments = new Expressions();
             Expression *index = new IdentifierExp(Loc(), Id::p);
@@ -421,7 +421,7 @@ Expression *buildArrayLoop(Expression *e, Parameters *fparams)
         {
             Identifier *id = Identifier::generateId("p", fparams->dim);
             Parameter *param = new Parameter(STCconst, e->type, id, NULL);
-            fparams->shift(param);
+            fparams->push(param);
             Expression *ie = new IdentifierExp(Loc(), id);
             Expressions *arguments = new Expressions();
             Expression *index = new IdentifierExp(Loc(), Id::p);
@@ -431,8 +431,11 @@ Expression *buildArrayLoop(Expression *e, Parameters *fparams)
 
         void visit(AssignExp *e)
         {
-            /* Evaluate assign expressions right to left
+            /* Evaluate assign expressions left to right
              */
+            Expression *ex1 = buildArrayLoop(e->e1);
+            Parameter *param = (*fparams)[fparams->dim - 1];
+            param->storageClass = 0;
             Expression *ex2 = buildArrayLoop(e->e2);
             /* Need the cast because:
              *   b = c + p[i];
@@ -440,20 +443,17 @@ Expression *buildArrayLoop(Expression *e, Parameters *fparams)
              * which cannot be implicitly cast to byte.
              */
             ex2 = new CastExp(Loc(), ex2, e->e1->type->nextOf());
-            Expression *ex1 = buildArrayLoop(e->e1);
-            Parameter *param = (*fparams)[0];
-            param->storageClass = 0;
             result = new AssignExp(Loc(), ex1, ex2);
         }
 
         void visit(BinAssignExp *e)
         {
-            /* Evaluate assign expressions right to left
+            /* Evaluate assign expressions left to right
              */
-            Expression *ex2 = buildArrayLoop(e->e2);
             Expression *ex1 = buildArrayLoop(e->e1);
-            Parameter *param = (*fparams)[0];
+            Parameter *param = (*fparams)[fparams->dim - 1];
             param->storageClass = 0;
+            Expression *ex2 = buildArrayLoop(e->e2);
             switch(e->op)
             {
             case TOKaddass: result = new AddAssignExp(e->loc, ex1, ex2); return;
@@ -496,7 +496,7 @@ Expression *buildArrayLoop(Expression *e, Parameters *fparams)
             case TOKor:
             case TOKpow:
             {
-                /* Evaluate assign expressions left to right
+                /* Evaluate array op expressions left to right
                  */
                 BinExp *be = (BinExp *)e->copy();
                 be->e1 = buildArrayLoop(be->e1);
